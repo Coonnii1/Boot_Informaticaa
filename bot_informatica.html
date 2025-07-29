@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bot UNAB</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    .chat-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      background: #fff;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    }
+    .message {
+      margin-bottom: 15px;
+      padding: 10px 15px;
+      border-radius: 10px;
+      max-width: 80%;
+      line-height: 1.4;
+      word-wrap: break-word;
+      white-space: pre-line;
+    }
+    .bot {
+      background-color: #e2f0ff;
+      align-self: flex-start;
+      color: #000;
+      position: relative;
+    }
+    .user {
+      background-color: #d1ffd1;
+      align-self: flex-end;
+      color: #000;
+      position: relative;
+    }
+    .hora {
+      font-size: 0.75rem;
+      color: #555;
+      margin-top: 3px;
+      text-align: right;
+    }
+    a {
+      color: #004488;
+      text-decoration: underline;
+    }
+    .input-container {
+      display: flex;
+      padding: 15px;
+      background-color: #fff;
+      border-top: 1px solid #ccc;
+    }
+    input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      font-size: 16px;
+    }
+    button {
+      margin-left: 10px;
+      padding: 10px 15px;
+      background-color: #0055a5;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #003d7a;
+    }
+    .quick-replies {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .quick-replies button {
+      background-color: #0084ff;
+      color: white;
+      padding: 8px 14px;
+      border-radius: 15px;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      transition: background-color 0.3s;
+      flex-shrink: 0;
+    }
+    .quick-replies button:hover {
+      background-color: #005bb5;
+    }
+    .typing {
+      font-style: italic;
+      color: #666;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container" id="chat"></div>
+  <div class="input-container">
+    <input type="text" id="input" placeholder="Escribe tu mensaje aquí..." autofocus autocomplete="off" />
+    <button id="send">Enviar</button>
+  </div>
+
+  <script>
+    const chat = document.getElementById("chat");
+    const input = document.getElementById("input");
+    const sendBtn = document.getElementById("send");
+
+    const temas = {
+      certificado: {
+        keywords: ["certificado", "alumno regular", "documento", "cómo pedir certificados", "cómo solicitar certificado", "cómo sacar certificado"],
+        respuesta: `
+          📄 Para solicitar tus certificados académicos:
+          <br>1. Ingresa a <a href="https://certificados.unab.cl/" target="_blank" rel="noopener noreferrer">certificados.unab.cl</a>.
+          <br>2. Inicia sesión con tu cuenta UNAB.
+          <br>3. Selecciona el tipo de certificado que necesitas (alumno regular, concentración de notas, etc.).
+          <br>4. Puedes descargarlo directamente o solicitar que te lo envíen por correo electrónico.
+          <br><br>Si tienes problemas, contacta a Servicio al Estudiante para soporte.
+        `
+      },
+      calendario: {
+        keywords: ["calendario", "plazos", "fechas", "solicitudes"],
+        respuesta: `
+          🗓️ Aquí tienes el Calendario Académico y de Solicitudes:
+          <br>1. Puedes descargar el PDF oficial con todas las fechas y plazos aquí:
+          <br><a href="https://www.unab.cl/servicioestudiante/wp-content/uploads/2022/11/Solicitudes-Semestrales.pdf" target="_blank" rel="noopener noreferrer">Descargar Calendario Académico 2025 (PDF)</a>.
+          <br><br>2. Para hacer solicitudes, dependiendo de lo que necesites, puedes usar:
+          <br>&nbsp;&nbsp;• <a href="https://portal2.unab.cl/home?check_logged_in=1" target="_blank" rel="noopener noreferrer">Intranet UNAB</a> para trámites administrativos internos.
+          <br>&nbsp;&nbsp;• <a href="https://www.unab.cl/servicioestudiante/login-gestiona-caso/" target="_blank" rel="noopener noreferrer">Gestiona tu Caso</a> para solicitudes que requieren atención personalizada.
+          <br><br>3. Revisa bien los plazos en el PDF y elige el canal adecuado según tu trámite.
+          <br><br>Si tienes dudas, siempre puedes consultar a Servicio al Estudiante.
+        `
+      },
+      horario: {
+        keywords: ["horario", "clases", "dónde veo mi horario", "cómo ver horario", "ver horario"],
+        respuesta: `
+          📅 Para revisar tu horario de clases:
+          <br>1. Ingresa a la plataforma oficial en <a href="https://www.unab.cl/servicioestudiante/horarios/" target="_blank" rel="noopener noreferrer">Horarios UNAB</a>.
+          <br>2. Accede con tu cuenta y contraseña.
+          <br>3. Podrás ver tus horarios por carrera, sede y periodo.
+          <br><br>Recuerda verificar tu horario antes de cada semestre para evitar conflictos.
+        `
+      },
+      matricula: {
+        keywords: ["matricula", "matrícula"],
+        respuesta: `
+          🎓 Para realizar tu matrícula:
+          <br>1. Ingresa a <a href="https://matricula.unab.cl/" target="_blank" rel="noopener noreferrer">matricula.unab.cl</a>.
+          <br>2. Accede con tu usuario y contraseña.
+          <br>3. Sigue los pasos indicados para formalizar tu matrícula.
+          <br>4. Revisa que tus datos y asignaturas estén correctos.
+          <br><br>Si tienes inconvenientes, contacta a la oficina de matrícula.
+        `
+      },
+      becas: {
+        keywords: ["beca", "crédito", "financiamiento", "arancel", "beneficio"],
+        respuesta: `
+          🎓 Información sobre becas y financiamiento:
+          <br>1. Consulta las opciones disponibles en <a href="https://www.unab.cl/servicioestudiante/becas-y-creditos/" target="_blank" rel="noopener noreferrer">Becas y Créditos UNAB</a>.
+          <br>2. Lee los requisitos para postular a cada beneficio.
+          <br>3. Completa la postulación dentro de los plazos establecidos.
+          <br>4. Mantente atento a la resolución y seguimiento.
+          <br><br>También puedes asesorarte en la oficina de bienestar estudiantil.
+        `
+      },
+      clave: {
+        keywords: ["clave", "contraseña", "no puedo entrar", "acceso", "recuperar clave"],
+        respuesta: `
+          🔐 Si tienes problemas con tu clave de acceso:
+          <br>1. Visita <a href="https://www.unab.cl/servicioestudiante/claves-y-accesos/" target="_blank" rel="noopener noreferrer">Recuperar acceso UNAB</a>.
+          <br>2. Sigue el proceso para restablecer tu contraseña.
+          <br>3. Si no puedes recuperarla, contacta al soporte técnico.
+          <br><br>Mantén tu clave segura y actualízala periódicamente.
+        `
+      },
+      correo: {
+        keywords: ["correo institucional", "outlook", "email", "mail"],
+        respuesta: `
+          📧 Para acceder a tu correo institucional:
+          <br>1. Ve a <a href="https://outlook.office365.com" target="_blank" rel="noopener noreferrer">Outlook Office 365</a>.
+          <br>2. Ingresa con tu usuario y contraseña UNAB.
+          <br>3. Revisa tus mensajes, notificaciones y comunicaciones oficiales.
+          <br><br>Es importante revisar el correo con frecuencia para estar al día.
+        `
+      },
+      software: {
+        keywords: ["licencias", "azure", "jetbrains", "software gratuito"],
+        respuesta: `
+          💻 Software gratuito para estudiantes:
+          <br>1. Ingresa a <a href="https://azureforeducation.microsoft.com/devtools" target="_blank" rel="noopener noreferrer">Azure Dev Tools</a>.
+          <br>2. Accede con tu cuenta UNAB.
+          <br>3. Descarga las licencias de software disponibles (JetBrains, Microsoft, etc.).
+          <br>4. Sigue las instrucciones de instalación.
+          <br><br>Aprovecha estas herramientas para tus proyectos y estudios.
+        `
+      },
+      emociones: {
+        keywords: ["estrés", "estres", "triste", "mal", "ansiedad"],
+        respuesta: `
+          🧠 Si te sientes estresado o necesitas apoyo emocional:
+          <br>1. Puedes acudir al área de bienestar estudiantil.
+          <br>2. Visita <a href="https://www.unab.cl/desarrolloestudiantil/" target="_blank" rel="noopener noreferrer">Bienestar UNAB</a> para más información.
+          <br>3. Ellos te ofrecen apoyo psicológico, talleres y actividades para tu bienestar.
+          <br><br>No dudes en buscar ayuda cuando la necesites.
+        `
+      },
+      gracias: {
+        keywords: ["gracias", "perfecto", "vale", "bacán", "chao", "nos vemos", "adiós"],
+        respuesta: `😊 ¡De nada! Si necesitas algo más, aquí estaré para ayudarte. ¡Que tengas un excelente día!`
+      },
+      intranet: {
+        keywords: ["intranet", "banner"],
+        respuesta: `
+          🔗 Para acceder a la Intranet UNAB:
+          <br>1. Visita <a href="https://portal2.unab.cl/home?check_logged_in=1" target="_blank" rel="noopener noreferrer">Intranet UNAB</a>.
+          <br>2. Ingresa con tus credenciales.
+          <br>3. Aquí encontrarás información institucional y servicios para estudiantes.
+          <br><br>Es una plataforma clave para trámites internos.
+        `
+      },
+      titulacion: {
+        keywords: ["titulación", "licenciatura", "egreso"],
+        respuesta: `
+          🎓 Para el proceso de Titulación y Licenciatura:
+          <br>1. Consulta los requisitos y pasos en <a href="https://www.unab.cl/servicioestudiante/licenciatura-y-titulacion/" target="_blank" rel="noopener noreferrer">Información de Titulación UNAB</a>.
+          <br>2. Entrega la documentación solicitada.
+          <br>3. Realiza los trámites en tiempo y forma.
+          <br><br>Para dudas, contacta a la unidad de titulación.
+        `
+      },
+      ficha: {
+        keywords: ["notas", "ficha curricular", "mis ramos"],
+        respuesta: `
+          📘 Consulta tus notas y ficha curricular:
+          <br>1. Ingresa a <a href="https://www.unab.cl/servicioestudiante/notas-y-ficha-curricular/" target="_blank" rel="noopener noreferrer">Notas y Ficha Curricular UNAB</a>.
+          <br>2. Accede con tu cuenta.
+          <br>3. Revisa tu rendimiento académico y plan de estudios.
+          <br><br>Importante para planificar tus próximos ramos.
+        `
+      },
+      deportes: {
+        keywords: ["deporte", "actividad física", "gym"],
+        respuesta: `
+          ⚽ Actividades deportivas en UNAB:
+          <br>1. Revisa las opciones y horarios en <a href="https://www.unab.cl/desarrolloestudiantil/area/deportes-unab/" target="_blank" rel="noopener noreferrer">Deportes UNAB</a>.
+          <br>2. Participa en talleres y campeonatos.
+          <br>3. Mantente activo y saludable.
+          <br><br>El deporte es clave para tu bienestar integral.
+        `
+      },
+      cultura: {
+        keywords: ["cultura", "talleres", "extracurriculares", "arte"],
+        respuesta: `
+          🎭 Actividades culturales y talleres:
+          <br>1. Consulta la oferta en <a href="https://cultura.unab.cl" target="_blank" rel="noopener noreferrer">Cultura UNAB</a>.
+          <br>2. Participa en talleres artísticos y eventos.
+          <br>3. Enriquécete con actividades extracurriculares.
+          <br><br>¡No todo es estudio, también hay espacio para el arte!
+        `
+      },
+      tne: {
+        keywords: ["tne", "pase escolar", "tarjeta nacional estudiantil"],
+        respuesta: `
+          🪪 Información sobre la Tarjeta Nacional Estudiantil (TNE):
+          <br>1. Visita <a href="https://www.unab.cl/servicioestudiante/tne/" target="_blank" rel="noopener noreferrer">TNE UNAB</a>.
+          <br>2. Consulta requisitos y plazos para solicitar tu pase escolar.
+          <br>3. Realiza el trámite correspondiente.
+          <br><br>Viaja con beneficios durante tu etapa estudiantil.
+        `
+      },
+      empleo: {
+        keywords: ["trabajo", "empleo", "portal laboral", "práctica"],
+        respuesta: `
+          💼 Portal de empleabilidad y prácticas:
+          <br>1. Ingresa a <a href="https://unabcl-csm.symplicity.com/students/index.php?signin_tab=0" target="_blank" rel="noopener noreferrer">Portal de Empleo UNAB</a>.
+          <br>2. Revisa ofertas laborales y de prácticas.
+          <br>3. Postúlate y mejora tu experiencia profesional.
+          <br><br>Aprovecha las oportunidades que ofrece la universidad.
+        `
+      },
+      tomaderamos: {
+        keywords: ["toma de ramos", "inscripción de ramos", "inscribir ramos"],
+        respuesta: `
+          📚 Para la toma de ramos:
+          <br>1. Ingresa a <a href="https://tomaderamos.unab.cl/" target="_blank" rel="noopener noreferrer">Toma de Ramos UNAB</a>.
+          <br>2. Accede con tu cuenta.
+          <br>3. Selecciona y confirma tus asignaturas para el semestre.
+          <br><br>Consulta los tutoriales si es la primera vez que realizas la inscripción.
+        `
+      },
+      default: {
+        respuesta: `
+          🤔 No encontré exactamente lo que buscas. Intenta preguntar de otra forma o visita:
+          <br><a href="https://www.unab.cl/servicioestudiante/" target="_blank" rel="noopener noreferrer">Servicio al Estudiante UNAB</a>
+        `
+      }
+    };
+
+    function obtenerHora() {
+      const now = new Date();
+      return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function agregarMensaje(texto, tipo) {
+      const mensaje = document.createElement("div");
+      mensaje.classList.add("message", tipo);
+      mensaje.innerHTML = texto;
+
+      const hora = document.createElement("div");
+      hora.classList.add("hora");
+      hora.innerText = obtenerHora();
+      mensaje.appendChild(hora);
+
+      chat.appendChild(mensaje);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function mostrarTyping() {
+      const typing = document.createElement("div");
+      typing.classList.add("typing");
+      typing.id = "typing";
+      typing.innerText = "Bot UNAB está escribiendo...";
+      chat.appendChild(typing);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function eliminarTyping() {
+      const typing = document.getElementById("typing");
+      if (typing) typing.remove();
+    }
+
+    function obtenerRespuesta(texto) {
+      const textoLower = texto.toLowerCase();
+      for (const tema in temas) {
+        if (tema === "default") continue;
+        for (const palabraClave of temas[tema].keywords) {
+          if (textoLower.includes(palabraClave)) {
+            return temas[tema].respuesta;
+          }
+        }
+      }
+      return temas.default.respuesta;
+    }
+
+    function sendMessage(texto) {
+      if (!texto) return;
+
+      agregarMensaje(texto, "user");
+      input.value = "";
+
+      mostrarTyping();
+
+      setTimeout(() => {
+        eliminarTyping();
+        const respuesta = obtenerRespuesta(texto);
+        agregarMensaje(respuesta, "bot");
+      }, 900);
+    }
+
+    sendBtn.addEventListener("click", () => {
+      sendMessage(input.value.trim());
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendMessage(input.value.trim());
+      }
+    });
+
+    // --- Quick replies ---
+    const quickReplies = [
+      { text: "📄 Certificados", tema: "certificado" },
+      { text: "🗓️ Calendario Académico", tema: "calendario" },
+      { text: "📅 Horario", tema: "horario" },
+      { text: "🎓 Matrícula", tema: "matricula" },
+      { text: "🎓 Becas y Créditos", tema: "becas" },
+      { text: "🔐 Clave y Acceso", tema: "clave" },
+      { text: "📧 Correo Institucional", tema: "correo" },
+      { text: "📚 Toma de Ramos", tema: "tomaderamos" }
+    ];
+
+    function crearQuickReplies() {
+      const container = document.createElement("div");
+      container.classList.add("quick-replies");
+      quickReplies.forEach(qr => {
+        const btn = document.createElement("button");
+        btn.textContent = qr.text;
+        btn.addEventListener("click", () => {
+          sendMessage(qr.text);
+        });
+        container.appendChild(btn);
+      });
+      chat.appendChild(container);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    window.onload = () => {
+      agregarMensaje(
+        `👋 Hola, bienvenido/a al Bot UNAB. Estoy aquí para ayudarte con todo lo que necesites como estudiante de Ingeniería Civil Informática de la UNAB.
+Puedes escribir tu pregunta o seleccionar una opción rápida 👇
+📌 Matrícula
+💻 Software
+📄 Certificados
+🗂️ Toma de ramos
+📚 Ciade
+🚑 Seguro de accidentes
+💰 Financiamiento
+📞 Contacto`,
+        "bot"
+      );
+      crearQuickReplies();
+    };
+  </script>
+</body>
+</html>
